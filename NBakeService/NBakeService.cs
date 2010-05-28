@@ -9,12 +9,26 @@ using System.Collections.Generic;
 
 namespace NBakeService
 {
+    public class PathTracker
+    {
+        public bool IsDirty { get; set; }
+        public DateTime? TimeOfLastEvent { get; set; }
+        public Timer InactivityCheckTimer { get; set; }
+        public string Path { get; set; }
+        public FileSystemWatcher Watcher { get; set; }
+        public TimeSpan TimeSinceLastEvent()
+        {
+            return DateTime.Now.Subtract(TimeOfLastEvent ?? DateTime.Now);
+        }
+    }
+
     public partial class NBakeService : ServiceBase
     {
         public NBakeService()
         {
             InitializeComponent();
         }
+
         public void RunInConsoleMode(string[] args)
         {
             OnStart(args);
@@ -22,6 +36,7 @@ namespace NBakeService
 
         private void Checkin(string path)
         {
+            Log("Checking in {0}", path);
             RunGitCommand("add .", path);
             RunGitCommand("commit -a -m \"NBake commit\"", path);
         }
@@ -30,7 +45,10 @@ namespace NBakeService
         {
             var tracker = state as PathTracker;
             if (tracker == null)
+            {
+                Log("Error: Tracker not found");
                 return;
+            }
             if (tracker.IsDirty && (tracker.TimeSinceLastEvent() > TimeSpan.FromSeconds(10)))
             {
                 Checkin(tracker.Path);
@@ -96,19 +114,6 @@ namespace NBakeService
                 var psi = new ProcessStartInfo(Settings.Default.gitPath, args);
                 Process ps = Process.Start(psi);
                 WaitForCompletion(ps, TimeSpan.FromSeconds(5));
-            }
-        }
-
-        class PathTracker
-        {
-            public bool IsDirty { get; set; }
-            public DateTime? TimeOfLastEvent { get; set; }
-            public Timer InactivityCheckTimer { get; set; }
-            public string Path { get; set; }
-            public FileSystemWatcher Watcher { get; set; }
-            public TimeSpan TimeSinceLastEvent()
-            {
-                return DateTime.Now.Subtract(TimeOfLastEvent ?? DateTime.Now);
             }
         }
 
