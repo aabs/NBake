@@ -5,6 +5,7 @@ using System.Linq;
 using System.ServiceProcess;
 using System.Threading;
 using NBakeService.Properties;
+using System.Collections.Generic;
 
 namespace NBakeService
 {
@@ -19,35 +20,49 @@ namespace NBakeService
             OnStart(args);
         }
 
-        private Timer InactivityCheckTimer { get; set; }
-        private bool IsDirty { get; set; }
-        private DateTime? TimeOfLastEvent { get; set; }
-        private FileSystemWatcher Watcher { get; set; }
-
-        private void Checkin()
+        private void Checkin(string path)
         {
-            RunGitCommand("add .");
-            RunGitCommand("commit -a -m \"NBake commit\"");
+            RunGitCommand("add .", path);
+            RunGitCommand("commit -a -m \"NBake commit\"", path);
         }
 
         public void CheckWhetherSafeToCheckin(object state)
         {
-            if (IsDirty && (TimeSinceLastEvent() > TimeSpan.FromSeconds(10)))
+            var tracker = state as PathTracker;
+            if (tracker == null)
+                return;
+            if (tracker.IsDirty && (tracker.TimeSinceLastEvent() > TimeSpan.FromSeconds(10)))
             {
-                Checkin();
-                IsDirty = false;
+                Checkin(tracker.Path);
+                tracker.IsDirty = false;
             }
         }
 
         private void InitializeWatchers()
         {
-            Environment.CurrentDirectory = Settings.Default.PathToMonitor;
-            var currentPath = new DirectoryInfo(Settings.Default.PathToMonitor);
-            if (WatchedDirectoryIsUnderRevisionControl())
+            var watchedPaths = Settings.Default.PathToMonitor.Split(';');
+            foreach (var watchedPath in watchedPaths)
             {
-                SetupRepositoryInWatchedDirectory();
+                if (!WatchedDirectoryIsUnderRevisionControl(watchedPath))
+                {
+                    SetupRepositoryInWatchedDirectory(watchedPath);
+                }
+                var watcher = new FileSystemWatcher(watchedPath);
+                watcher.Changed += SomethingChanged;
+                watcher.Created += SomethingChanged;
+                watcher.Deleted += SomethingChanged;
+                watcher.Renamed += SomethingChangedName;
+                watcher.EnableRaisingEvents = true;
+                var tracker = new PathTracker
+                {
+                    Watcher = watcher,
+                    Path = watchedPath,
+                    TimeOfLastEvent = null,
+                    IsDirty = false
+                };
+                tracker.InactivityCheckTimer = new Timer(CheckWhetherSafeToCheckin, tracker, 10000, 10000);
+                Trackers[watchedPath] = tracker;
             }
-            SetupInactivityTimer();
         }
 
         protected override void OnStart(string[] args)
@@ -58,50 +73,66 @@ namespace NBakeService
 
         protected override void OnStop()
         {
-            if (InactivityCheckTimer != null)
+            foreach (var t in Trackers.Values)
             {
-                InactivityCheckTimer.Change(Timeout.Infinite, Timeout.Infinite);
-            }
-            Watcher.EnableRaisingEvents = false;
-            if (IsDirty)
-            {
-                Checkin();
+                if (t.InactivityCheckTimer != null)
+                {
+                    t.InactivityCheckTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                }
+                t.Watcher.EnableRaisingEvents = false;
+                if (t.IsDirty)
+                {
+                    Checkin(t.Path);
+                }
             }
         }
 
-        private void RunGitCommand(string args)
+        static object locker = new object();
+        private void RunGitCommand(string args, string path)
         {
-            var psi = new ProcessStartInfo(Settings.Default.gitPath, args);
-            Process ps = Process.Start(psi);
-            WaitForCompletion(ps, TimeSpan.FromSeconds(5));
+            lock (locker)
+            {
+                Environment.CurrentDirectory = path;
+                var psi = new ProcessStartInfo(Settings.Default.gitPath, args);
+                Process ps = Process.Start(psi);
+                WaitForCompletion(ps, TimeSpan.FromSeconds(5));
+            }
         }
 
+        class PathTracker
+        {
+            public bool IsDirty { get; set; }
+            public DateTime? TimeOfLastEvent { get; set; }
+            public Timer InactivityCheckTimer { get; set; }
+            public string Path { get; set; }
+            public FileSystemWatcher Watcher { get; set; }
+            public TimeSpan TimeSinceLastEvent()
+            {
+                return DateTime.Now.Subtract(TimeOfLastEvent ?? DateTime.Now);
+            }
+        }
+
+        Dictionary<string, PathTracker> Trackers = new Dictionary<string, PathTracker>();
+        
         private void SetupFsWatchers()
         {
-            Watcher = new FileSystemWatcher(Settings.Default.PathToMonitor);
-            Watcher.Changed += SomethingChanged;
-            Watcher.Created += SomethingChanged;
-            Watcher.Deleted += SomethingChanged;
-            Watcher.Renamed += SomethingChangedName;
-            Watcher.EnableRaisingEvents = true;
+            var watchedPaths = Settings.Default.PathToMonitor.Split(';');
+            foreach (var path in watchedPaths)
+            {
+            }
         }
 
-        private void SetupInactivityTimer()
+        private void SetupRepositoryInWatchedDirectory(string path)
         {
-            InactivityCheckTimer = new Timer(CheckWhetherSafeToCheckin, null, 10000, 10000);
-        }
-
-        private void SetupRepositoryInWatchedDirectory()
-        {
-            RunGitCommand("init");
+            RunGitCommand("init", path);
 
             // setup local user and email credentials
-            RunGitCommand("config --global user.name \"" + Settings.Default.userId + "\"");
-            RunGitCommand("config --global user.email \"" + Settings.Default.email + "\"");
+            RunGitCommand("config --global user.name \"" + Settings.Default.userId + "\"", path);
+            RunGitCommand("config --global user.email \"" + Settings.Default.email + "\"", path);
 
             // define .gitignore file in the watched directory
             var ignores = Settings.Default.IgnorePatterns.Split(',');
-            var ignoreFile = new FileInfo(Path.Combine(Settings.Default.PathToMonitor, ".gitignore"));
+            var ignoreFile = new FileInfo(Path.Combine(path, ".gitignore"));
             if (!ignoreFile.Exists)
             {
                 using(var stream = ignoreFile.Open(FileMode.Create, FileAccess.Write, FileShare.None))
@@ -117,19 +148,27 @@ namespace NBakeService
 
         private void SomethingChanged(object sender, FileSystemEventArgs e)
         {
-            IsDirty = true;
-            TimeOfLastEvent = DateTime.Now;
+            var fsw = sender as FileSystemWatcher;
+            TrackChange(fsw, e.ChangeType);
+        }
+
+        void TrackChange(FileSystemWatcher fsw, WatcherChangeTypes changeType)
+        {
+            var t = Trackers[fsw.Path];
+            Log("Something was {0} in {1}", Enum.GetName(typeof(WatcherChangeTypes), changeType), fsw.Path);
+            t.IsDirty = true;
+            t.TimeOfLastEvent = DateTime.Now;
+        }
+
+        void Log(string msg, params object[] args)
+        {
+            Debug.WriteLine(string.Format(msg, args));
         }
 
         private void SomethingChangedName(object sender, RenamedEventArgs e)
         {
-            IsDirty = true;
-            TimeOfLastEvent = DateTime.Now;
-        }
-
-        private TimeSpan TimeSinceLastEvent()
-        {
-            return DateTime.Now.Subtract(TimeOfLastEvent ?? DateTime.Now);
+            var fsw = sender as FileSystemWatcher;
+            TrackChange(fsw, e.ChangeType);
         }
 
         private void WaitForCompletion(Process ps, TimeSpan timeout)
@@ -141,10 +180,10 @@ namespace NBakeService
             }
         }
 
-        private bool WatchedDirectoryIsUnderRevisionControl()
+        private bool WatchedDirectoryIsUnderRevisionControl(string path)
         {
-            var currentPath = new DirectoryInfo(Settings.Default.PathToMonitor);
-            return (!currentPath.GetDirectories().Any(di => di.Name.Equals(".git")));
+            var currentPath = new DirectoryInfo(path);
+            return (currentPath.GetDirectories().Any(di => di.Name.Equals(".git")));
         }
     }
 }
