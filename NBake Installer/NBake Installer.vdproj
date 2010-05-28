@@ -33,7 +33,7 @@
         "DisplayName" = "8:Debug"
         "IsDebugOnly" = "11:TRUE"
         "IsReleaseOnly" = "11:FALSE"
-        "OutputFilename" = "8:Debug\\NBake Installer.msi"
+        "OutputFilename" = "8:Debug\\NBake.msi"
         "PackageFilesAs" = "3:2"
         "PackageFileSize" = "3:-2147483648"
         "CabType" = "3:1"
@@ -43,13 +43,21 @@
         "PrivateKeyFile" = "8:"
         "TimeStampServer" = "8:"
         "InstallerBootstrapper" = "3:2"
+            "BootstrapperCfg:{63ACBE69-63AA-4F98-B2B6-99F9E24495F2}"
+            {
+            "Enabled" = "11:TRUE"
+            "PromptEnabled" = "11:TRUE"
+            "PrerequisitesLocation" = "2:1"
+            "Url" = "8:"
+            "ComponentsUrl" = "8:"
+            }
         }
         "Release"
         {
         "DisplayName" = "8:Release"
         "IsDebugOnly" = "11:FALSE"
         "IsReleaseOnly" = "11:TRUE"
-        "OutputFilename" = "8:Release\\NBake Installer.msi"
+        "OutputFilename" = "8:Release\\NBake.msi"
         "PackageFilesAs" = "3:2"
         "PackageFileSize" = "3:-2147483648"
         "CabType" = "3:1"
@@ -59,6 +67,27 @@
         "PrivateKeyFile" = "8:"
         "TimeStampServer" = "8:"
         "InstallerBootstrapper" = "3:2"
+            "BootstrapperCfg:{63ACBE69-63AA-4F98-B2B6-99F9E24495F2}"
+            {
+            "Enabled" = "11:TRUE"
+            "PromptEnabled" = "11:TRUE"
+            "PrerequisitesLocation" = "2:1"
+            "Url" = "8:"
+            "ComponentsUrl" = "8:"
+                "Items"
+                {
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:Microsoft.Net.Framework.3.5.SP1"
+                    {
+                    "Name" = "8:.NET Framework 3.5 SP1"
+                    "ProductCode" = "8:Microsoft.Net.Framework.3.5.SP1"
+                    }
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:Microsoft.Windows.Installer.3.1"
+                    {
+                    "Name" = "8:Windows Installer 3.1"
+                    "ProductCode" = "8:Microsoft.Windows.Installer.3.1"
+                    }
+                }
+            }
         }
     }
     "Deployable"
@@ -199,9 +228,9 @@
         "Product"
         {
         "Name" = "8:Microsoft Visual Studio"
-        "ProductName" = "8:NBake Installer"
+        "ProductName" = "8:NBake"
         "ProductCode" = "8:{1AC7B2E7-26E1-452D-A372-FE11B26C0F99}"
-        "PackageCode" = "8:{38F7A3C4-7B01-4620-8523-556D0DC1546B}"
+        "PackageCode" = "8:{6CD18192-A0ED-4AB3-ABBF-F69BB6B417B0}"
         "UpgradeCode" = "8:{8717B2C8-E8AF-43FF-BF8B-D5F7FC03AB8F}"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:FALSE"
@@ -211,7 +240,7 @@
         "Manufacturer" = "8:Andrew Matthews"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"
-        "Title" = "8:NBake Installer"
+        "Title" = "8:NBake"
         "Subject" = "8:"
         "ARPCONTACT" = "8:Andrew Matthews"
         "Keywords" = "8:"
@@ -721,7 +750,7 @@
         {
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_2EB83599B8C54570A12148D417252DED"
             {
-            "SourcePath" = "8:..\\NBakeService\\obj\\Debug\\NBakeService.exe"
+            "SourcePath" = "8:..\\NBakeService\\obj\\Release\\NBakeService.exe"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_AF9CEE5A0A994AB5A3431BE5444252A8"
