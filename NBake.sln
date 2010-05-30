@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2008
+# Visual Studio 2010
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NBakeService", "NBakeService\NBakeService.csproj", "{E86840C3-CB89-437C-8FF8-27729DCA9F7F}"
 EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "NBake Installer", "NBake Installer\NBake Installer.vdproj", "{714CDA6C-7985-45B6-BB92-CCFA8666312A}"
@@ -30,6 +30,7 @@ Global
 		{714CDA6C-7985-45B6-BB92-CCFA8666312A}.Debug|x86.ActiveCfg = Debug
 		{714CDA6C-7985-45B6-BB92-CCFA8666312A}.Release|Any CPU.ActiveCfg = Release
 		{714CDA6C-7985-45B6-BB92-CCFA8666312A}.Release|Mixed Platforms.ActiveCfg = Release
+		{714CDA6C-7985-45B6-BB92-CCFA8666312A}.Release|Mixed Platforms.Build.0 = Release
 		{714CDA6C-7985-45B6-BB92-CCFA8666312A}.Release|x86.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
