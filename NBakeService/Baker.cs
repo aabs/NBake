@@ -26,9 +26,9 @@ namespace NBakeService
 
             string configPath = Path.Combine(Path.GetDirectoryName(location), Settings.Default.nbakeConfig);
 
-            if (!File.Exists( configPath))
+            if (!File.Exists(configPath))
                 throw new ApplicationException("unable to locate configuration settings");
-            
+
             XDocument configXml = XDocument.Load(configPath);
             GlobalSettings = Configuration.GetGlobalSettings(configXml);
             IEnumerable<Target> targets = Configuration.GetAllTargets(configXml);
@@ -55,7 +55,7 @@ namespace NBakeService
 
         private void Checkin(string path)
         {
-            Log("Checking in {0}", path);
+            Logger.Debug("Checking in {0}", path);
             RunGitCommand("add .", path);
             RunGitCommand("commit -a -m \"NBake commit\"", path);
         }
@@ -65,7 +65,7 @@ namespace NBakeService
             var tracker = state as PathTracker;
             if (tracker == null)
             {
-                Log("Error: Tracker not found");
+                Logger.Error("Error: Tracker not found");
                 return;
             }
             if (tracker.IsDirty && (tracker.TimeSinceLastEvent() > TimeSpan.FromSeconds(10)))
@@ -154,17 +154,17 @@ namespace NBakeService
                 if (target != null && target.Settings.ContainsKey(key))
                 {
                     if (!string.IsNullOrEmpty(target.Settings[key]))
-                        return (T)Convert.ChangeType(target.Settings[key], typeof(T));
+                        return (T) Convert.ChangeType(target.Settings[key], typeof (T));
                 }
                 else if (GlobalSettings != null && GlobalSettings.ContainsKey(key))
                 {
                     if (!string.IsNullOrEmpty(GlobalSettings[key]))
-                        return (T)Convert.ChangeType(GlobalSettings[key], typeof(T));
+                        return (T) Convert.ChangeType(GlobalSettings[key], typeof (T));
                 }
             }
             catch
             {
-                Log("Error: unable to locate configuration setting");
+                Logger.Error("Error: unable to locate configuration setting");
                 return defaultValue;
             }
             return defaultValue;
@@ -181,16 +181,50 @@ namespace NBakeService
                                  WatcherChangeTypes changeType)
         {
             PathTracker t = _trackers[fsw.Path];
-            Log("Something was {0} in {1}", Enum.GetName(typeof(WatcherChangeTypes), changeType), fsw.Path);
+            Logger.Debug("Something was {0} in {1}", Enum.GetName(typeof (WatcherChangeTypes), changeType), fsw.Path);
             t.IsDirty = true;
             t.TimeOfLastEvent = DateTime.Now;
         }
 
-        [Conditional("DEBUG")]
-        private static void Log(string msg,
-                         params object[] args)
+        static class Logger
         {
-            Debug.WriteLine(string.Format(msg, args));
+            public enum Level
+            {
+                Debug, Info, Warn, Error
+            }
+            private static string FormatMessage(string msg, params object[] args)
+            {
+                return string.Format(msg, args);
+            }
+
+            private static void Log(string msg, Level level = Level.Debug)
+            {
+#if(!RELEASE)
+                EventLog.WriteEntry("NBake", msg);
+#else
+            Debug.WriteLine(message);
+#endif
+            }
+
+            public static void Debug(string msg, params object[] args)
+            {
+                Log(FormatMessage(msg, args));
+            }
+
+            public static void Info(string msg, params object[] args)
+            {
+                Log(FormatMessage(msg, args), Level.Info);
+            }
+
+            public static void Warn(string msg, params object[] args)
+            {
+                Log(FormatMessage(msg, args), Level.Warn);
+            }
+
+            public static void Error(string msg, params object[] args)
+            {
+                Log(FormatMessage(msg, args), Level.Error);
+            }
         }
 
         private void SomethingChangedName(object sender,
@@ -201,7 +235,7 @@ namespace NBakeService
         }
 
         private static void WaitForCompletion(Process ps,
-                                       TimeSpan timeout)
+                                              TimeSpan timeout)
         {
             DateTime startOfMonitoring = DateTime.Now;
             while (!ps.HasExited && DateTime.Now > startOfMonitoring.Add(timeout))
