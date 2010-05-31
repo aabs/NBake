@@ -2,20 +2,8 @@
 <SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="NBakeService.Properties" GeneratedClassName="Settings">
   <Profiles />
   <Settings>
-    <Setting Name="gitPath" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">C:\Program Files\Git\bin\git.exe</Value>
-    </Setting>
-    <Setting Name="userId" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">Andrew Matthews</Value>
-    </Setting>
-    <Setting Name="email" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">andrew.matthews@premier.com.au</Value>
-    </Setting>
-    <Setting Name="PathToMonitor" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">c:\tmp\nbakeTest</Value>
-    </Setting>
-    <Setting Name="IgnorePatterns" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">*.swp,.svn,*ReSharper*,*~,bin,obj</Value>
+    <Setting Name="nbakeConfig" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">nbake.config</Value>
     </Setting>
   </Settings>
 </SettingsFile>
